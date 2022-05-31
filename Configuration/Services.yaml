@@ -1,0 +1,13 @@
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+    public: true
+
+  Wazum\ConsoleOutputService\:
+    resource: '../Classes/*'
+
+  Wazum\ConsoleOutputService\Console\ConsoleOutputFactory: ~
+
+  Symfony\Component\Console\Output\ConsoleOutput:
+    factory: ['@Wazum\ConsoleOutputService\Console\ConsoleOutputFactory', 'create']

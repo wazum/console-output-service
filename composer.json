@@ -1,0 +1,20 @@
+{
+  "name": "wazum/console-output-service",
+  "type": "typo3-cms-extension",
+  "description": "Provides the Symfony ConsoleOutput as a service",
+  "version": "1.0.0",
+  "extra": {
+    "typo3/cms": {
+      "extension-key": "console_output_service"
+    }
+  },
+  "autoload": {
+    "psr-4": {
+      "Wazum\\ConsoleOutputService\\": "Classes/"
+    }
+  },
+  "require": {
+    "typo3/cms-core": "^10||^11||^12",
+    "symfony/console": "*"
+  }
+}
