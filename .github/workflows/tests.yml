@@ -1,0 +1,114 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ['8.2', '8.3', '8.4']
+        typo3-version: ['12', '13']
+        include:
+          - php-version: '8.2'
+            typo3-version: '12'
+            typo3-constraint: '^12.4'
+          - php-version: '8.2'
+            typo3-version: '13'
+            typo3-constraint: '^13.4'
+          - php-version: '8.3'
+            typo3-version: '12'
+            typo3-constraint: '^12.4'
+          - php-version: '8.3'
+            typo3-version: '13'
+            typo3-constraint: '^13.4'
+          - php-version: '8.4'
+            typo3-version: '12'
+            typo3-constraint: '^12.4'
+          - php-version: '8.4'
+            typo3-version: '13'
+            typo3-constraint: '^13.4'
+
+    name: PHP ${{ matrix.php-version }} / TYPO3 ${{ matrix.typo3-version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: intl, mbstring, pdo_sqlite
+          ini-values: memory_limit=-1
+          coverage: none
+
+      - name: Validate composer.json and composer.lock
+        run: composer validate --strict
+
+      - name: Cache Composer packages
+        id: composer-cache
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-php-${{ matrix.php-version }}-typo3-${{ matrix.typo3-version }}-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-${{ matrix.php-version }}-typo3-${{ matrix.typo3-version }}-
+
+      - name: Install dependencies
+        run: |
+          composer config --no-plugins allow-plugins.typo3/cms-composer-installers true
+          composer config --no-plugins allow-plugins.typo3/class-alias-loader true
+          composer require --dev --no-update typo3/cms-core:${{ matrix.typo3-constraint }}
+          composer update --prefer-dist --no-progress --no-suggest
+
+      - name: Run PHPUnit tests
+        run: vendor/bin/phpunit --no-coverage
+
+      - name: Run PHP CS Fixer (dry-run)
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff
+        continue-on-error: true
+
+  code-quality:
+    runs-on: ubuntu-latest
+    name: Code Quality
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: intl, mbstring, pdo_sqlite
+          ini-values: memory_limit=-1
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-php-8.3-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-8.3-
+
+      - name: Install dependencies
+        run: |
+          composer config --no-plugins allow-plugins.typo3/cms-composer-installers true
+          composer config --no-plugins allow-plugins.typo3/class-alias-loader true
+          composer install --prefer-dist --no-progress
+
+      - name: Run PHPStan
+        run: vendor/bin/phpstan analyse
+        continue-on-error: true
+
+      - name: Run Rector (dry-run)
+        run: vendor/bin/rector --dry-run
+        continue-on-error: true
